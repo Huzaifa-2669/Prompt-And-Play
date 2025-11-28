@@ -1,0 +1,191 @@
+================================================================================
+CHROMEFORGE - SAMPLE TEST PROMPTS
+================================================================================
+
+Use these prompts to test chrome_forge.py
+Simply run: python chrome_forge.py
+Then enter any of these prompts when asked.
+
+================================================================================
+TEST CASE 1: Simple Popup Extension
+================================================================================
+PROMPT:
+Create an extension that shows a popup with today's date.
+
+EXPECTED OUTPUT:
+- manifest.json
+- popup.html
+- popup.js
+- styles.css
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Open Chrome -> chrome://extensions/
+4. Enable Developer mode
+5. Click "Load unpacked"
+6. Select "generated_extension" folder
+7. Click the extension icon
+8. Should see a styled popup showing today's date
+
+================================================================================
+TEST CASE 2: Phone Number Highlighter
+================================================================================
+PROMPT:
+Make an extension that highlights all phone numbers on any website.
+
+EXPECTED OUTPUT:
+- manifest.json
+- content.js
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Load extension in Chrome
+4. Visit any webpage with phone numbers (e.g., contact page)
+5. Phone numbers should be highlighted in yellow automatically
+
+================================================================================
+TEST CASE 3: Website Blocker
+================================================================================
+PROMPT:
+Block Facebook and TikTok every time the browser opens.
+
+EXPECTED OUTPUT:
+- manifest.json
+- background.js
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Load extension in Chrome
+4. Try visiting facebook.com or tiktok.com
+5. Sites should be blocked (Note: May need additional permissions in MV3)
+
+================================================================================
+TEST CASE 4: Text Color Changer (Complex)
+================================================================================
+PROMPT:
+A tool that changes all webpage text to blue when I click a button in the popup.
+
+EXPECTED OUTPUT:
+- manifest.json
+- popup.html
+- popup.js
+- content.js
+- styles.css
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Load extension in Chrome
+4. Go to any website
+5. Click extension icon
+6. Click the "Execute Action" button in popup
+7. All text on the webpage should turn blue
+
+================================================================================
+TEST CASE 5: Pomodoro Timer
+================================================================================
+PROMPT:
+Create a pomodoro timer that shows a notification every 25 minutes.
+
+EXPECTED OUTPUT:
+- manifest.json
+- popup.html
+- popup.js
+- background.js
+- styles.css
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Load extension in Chrome
+4. Click extension icon
+5. Should see timer at 25:00
+6. Click "Start" button
+7. Timer should count down
+8. At 0:00, should show alert
+
+================================================================================
+TEST CASE 6: Email Extractor
+================================================================================
+PROMPT:
+Extract all email addresses from the current page and display them in a list.
+
+EXPECTED OUTPUT:
+- manifest.json
+- popup.html
+- popup.js
+- content.js
+- styles.css
+
+HOW TO TEST:
+1. Run: python chrome_forge.py
+2. Enter the prompt above
+3. Load extension in Chrome
+4. Visit a webpage with email addresses
+5. Click extension icon
+6. Should see extracted emails
+
+================================================================================
+ADDITIONAL TEST IDEAS
+================================================================================
+
+Try these variations:
+
+1. "Create a word counter that counts words on any webpage"
+2. "Make a dark mode extension that inverts colors on all websites"
+3. "Build a URL shortener popup tool"
+4. "Create an extension that removes all images from webpages"
+5. "Make a timer that reminds me to take breaks every hour"
+6. "Build a tool that highlights all links in red"
+7. "Create a password generator in a popup"
+8. "Make an extension that saves the current tab URL to storage"
+
+================================================================================
+QUICK REFERENCE - CHROME EXTENSION LOADING
+================================================================================
+
+1. Open Chrome
+2. Navigate to: chrome://extensions/
+3. Toggle "Developer mode" (top-right corner)
+4. Click "Load unpacked"
+5. Navigate to the "generated_extension" folder
+6. Click "Select Folder"
+7. Extension should appear in your extensions list
+8. Click extension icon to test (if it has a popup)
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: Extension won't load
+Solution: Check manifest.json is valid JSON, ensure all referenced files exist
+
+Problem: Popup doesn't show
+Solution: Verify manifest has "action" field with "default_popup"
+
+Problem: Content script not working
+Solution: Check permissions (activeTab, scripting) are in manifest
+
+Problem: Background script errors
+Solution: Check service_worker field in manifest, view errors in Extensions page
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+After generating an extension:
+
+[ ] generated_extension/ folder created
+[ ] manifest.json exists and is valid JSON
+[ ] manifest_version is 3
+[ ] All referenced files in manifest exist
+[ ] Extension loads in Chrome without errors
+[ ] Extension icon appears in toolbar (if popup)
+[ ] Extension functionality works as described
+
+================================================================================
+END OF SAMPLE PROMPTS
+================================================================================

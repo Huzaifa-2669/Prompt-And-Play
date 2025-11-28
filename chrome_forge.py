@@ -7,6 +7,7 @@ import json
 import os
 import re
 from manifest_builder import generate_manifest
+from code_generator import CodeGenerator
 
 
 class PromptAnalyzer:
@@ -40,8 +41,8 @@ class PromptAnalyzer:
         """Detect if a popup UI is needed"""
         popup_keywords = [
             'popup', 'button in', 'menu', 'click a button', 'interface', 'ui',
-            'show a popup', 'display in popup', 'panel', 'window', 'input', 'form',
-            'today\'s date', 'calculator', 'converter'
+            'show a popup', 'display', 'panel', 'window', 'input', 'form',
+            'today\'s date', 'calculator', 'converter', 'list'
         ]
         
         # Keywords that suggest user interaction via popup
@@ -50,6 +51,12 @@ class PromptAnalyzer:
                 self.requirements['needs_popup'] = True
                 self.requirements['features'].append('popup_ui')
                 break
+        
+        # Special cases that need popup for display
+        if 'extract' in self.prompt and 'display' in self.prompt:
+            self.requirements['needs_popup'] = True
+            if 'popup_ui' not in self.requirements['features']:
+                self.requirements['features'].append('popup_ui')
         
         # Special case: if it's a timer/notification tool, needs popup for controls
         if ('timer' in self.prompt or 'pomodoro' in self.prompt) and not self.requirements['needs_popup']:
@@ -195,10 +202,24 @@ def main():
     print(json.dumps(manifest, indent=2))
     print()
     
+    # Part C - Generate Code Files
     print("=" * 60)
-    print("✅ Integration Test Complete!".center(60))
+    print("Generating Extension Files...".center(60))
+    print("=" * 60 + "\n")
+    
+    generator = CodeGenerator(requirements, user_prompt)
+    generated_files = generator.generate_all_files("generated_extension")
+    
+    print("✅ Generated Files:")
+    for file in generated_files:
+        print(f"  • {file}")
+    print()
+    
     print("=" * 60)
-    print("\nCheck the 'generated_extension' folder for manifest.json")
+    print("✅ Extension Generation Complete!".center(60))
+    print("=" * 60)
+    print("\nYour extension is ready in 'generated_extension' folder")
+    print("Load it in Chrome: chrome://extensions/ > Load unpacked")
     print()
 
 

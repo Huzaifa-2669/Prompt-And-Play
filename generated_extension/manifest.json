@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Generated Extension",
   "version": "1.0",
-  "description": "A tool that changes all webpage text to blue when I click a button in the popup.",
+  "description": "Extract all email addresses from the current page and display them in a list.",
   "action": {
     "default_popup": "popup.html"
   },
