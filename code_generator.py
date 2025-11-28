@@ -6,6 +6,13 @@ Generates HTML, JS, and CSS files based on analysis requirements
 """
 
 import os
+from typing import Dict
+
+try:
+    # optional import — gemini_client is provided but may raise if requests isn't available
+    from gemini_client import generate_files as gemini_generate_files
+except Exception:
+    gemini_generate_files = None
 
 
 class CodeGenerator:
@@ -15,6 +22,13 @@ class CodeGenerator:
         self.requirements = requirements
         self.user_prompt = user_prompt
         self.prompt_lower = user_prompt.lower()
+
+        # If caller explicitly requests Gemini-driven generation, note it here.
+        # The presence of a key 'use_gemini' (truthy) in requirements triggers
+        # an attempt to call the Gemini client. If the client isn't available
+        # or API key isn't provided, a RuntimeError will be raised by the
+        # client — callers are expected to handle that.
+        self.use_gemini = bool(self.requirements.get('use_gemini'))
     
     def generate_popup_html(self):
         """Generate popup.html based on user prompt"""
@@ -26,6 +40,7 @@ class CodeGenerator:
         show_date = 'date' in self.prompt_lower
         show_time = 'time' in self.prompt_lower
         extract_emails = 'extract' in self.prompt_lower and 'email' in self.prompt_lower
+        needs_content_interaction = self.requirements.get('needs_content_script', False)
         
         html = """<!DOCTYPE html>
 <html lang="en">
@@ -40,63 +55,30 @@ class CodeGenerator:
         <h1>Generated Extension</h1>
 """
         
-        # Add specific content based on prompt
+        # Compact content: include extract button and generic action when relevant
+        # Date/time displays (compact placement)
         if show_date:
-            html += """        <div class="content">
-            <h2>Today's Date</h2>
-            <p id="date-display"></p>
-        </div>
-"""
-        
+            html += '        <div class="content"><h2>Today\'s Date</h2> <p id="date-display"></p></div>\n'
+
         if show_time:
-            html += """        <div class="content">
-            <h2>Current Time</h2>
-            <p id="time-display"></p>
-        </div>
-"""
-        
-        if has_timer:
-            html += """        <div class="content">
-            <h2>Timer</h2>
-            <p id="timer-display">25:00</p>
-            <button id="start-timer">Start</button>
-            <button id="stop-timer">Stop</button>
-            <button id="reset-timer">Reset</button>
-        </div>
-"""
-        
-        if has_input:
-            html += """        <div class="content">
-            <input type="text" id="user-input" placeholder="Enter value...">
-            <button id="submit-btn">Submit</button>
-        </div>
-"""
-        
+            html += '        <div class="content"><h2>Current Time</h2> <p id="time-display"></p></div>\n'
         if extract_emails:
-            # Email extraction display area
-            html += """        <div class="content">
-            <h2>Email Extractor</h2>
-            <button id="extract-btn">Extract Emails</button>
-            <div id="email-list"></div>
-            <p id="email-count"></p>
-        </div>
-"""
-        
-        if has_button and not has_input and not has_timer and not extract_emails:
-            # Generic action button for content script interaction
-            html += """        <div class="content">
-            <button id="action-btn">Execute Action</button>
-            <p id="status"></p>
-        </div>
-"""
-        
-        # Default content if nothing specific detected
-        if not (show_date or show_time or has_timer or has_input or has_button or extract_emails):
-            html += """        <div class="content">
-            <p>Extension is active and ready!</p>
-            <button id="action-btn">Click Me</button>
-        </div>
-"""
+            html += (
+                '        <div class="content"><h2>Email Extractor</h2>'
+                ' <button id="extract-btn">Extract Emails</button>'
+                ' <div id="email-list"></div><p id="email-count"></p></div>\n'
+            )
+
+        if has_button or needs_content_interaction:
+            html += (
+                '        <div class="content">'
+                ' <button id="action-btn">Execute Action</button>'
+                ' <p id="status"></p></div>\n'
+            )
+
+        # Minimal fallback
+        if not (extract_emails or has_button or has_input or has_timer or show_date or show_time):
+            html += '        <div class="content"><p>Extension is active.</p> <button id="action-btn">Click Me</button></div>\n'
         
         html += """    </div>
     <script src="popup.js"></script>
@@ -115,266 +97,90 @@ class CodeGenerator:
         needs_content_interaction = self.requirements.get('needs_content_script', False)
         extract_emails = 'extract' in self.prompt_lower and 'email' in self.prompt_lower
         
-        js = """// Popup script for generated extension
+        # Build a concise popup script that supports extract and execute actions
+        js = (
+            "// Popup script for generated extension\n"
+            "document.addEventListener('DOMContentLoaded', function(){\n"
+        )
 
-document.addEventListener('DOMContentLoaded', function() {
-"""
-        
-        # Date display logic
+        # Populate date/time if requested
         if show_date:
-            js += """    // Display today's date
-    const dateDisplay = document.getElementById('date-display');
-    if (dateDisplay) {
-        const today = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateDisplay.textContent = today.toLocaleDateString('en-US', options);
-    }
+            js += (
+                "    const dateDisplay = document.getElementById('date-display');\n"
+                "    if(dateDisplay){ const today = new Date(); const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }; dateDisplay.textContent = today.toLocaleDateString('en-US', opts); }\n\n"
+            )
 
-"""
-        
-        # Time display logic
         if show_time:
-            js += """    // Display current time
-    const timeDisplay = document.getElementById('time-display');
-    if (timeDisplay) {
-        function updateTime() {
-            const now = new Date();
-            timeDisplay.textContent = now.toLocaleTimeString();
-        }
-        updateTime();
-        setInterval(updateTime, 1000);
-    }
+            js += (
+                "    const timeDisplay = document.getElementById('time-display');\n"
+                "    if(timeDisplay){ function updateTime(){ const now=new Date(); timeDisplay.textContent = now.toLocaleTimeString(); } updateTime(); setInterval(updateTime, 1000); }\n\n"
+            )
 
-"""
-        
-        # Timer logic
-        if has_timer:
-            js += """    // Pomodoro Timer Logic
-    let timerInterval;
-    let timeLeft = 25 * 60; // 25 minutes in seconds
-    
-    const timerDisplay = document.getElementById('timer-display');
-    const startBtn = document.getElementById('start-timer');
-    const stopBtn = document.getElementById('stop-timer');
-    const resetBtn = document.getElementById('reset-timer');
-    
-    function updateDisplay() {
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    if (startBtn) {
-        startBtn.addEventListener('click', function() {
-            if (!timerInterval) {
-                timerInterval = setInterval(function() {
-                    timeLeft--;
-                    updateDisplay();
-                    
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                        alert('Time is up!');
-                        timeLeft = 25 * 60;
-                        updateDisplay();
-                    }
-                }, 1000);
-            }
-        });
-    }
-    
-    if (stopBtn) {
-        stopBtn.addEventListener('click', function() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        });
-    }
-    
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            timeLeft = 25 * 60;
-            updateDisplay();
-        });
-    }
+        if extract_emails or has_button:
+            js += (
+                "    async function postToActiveTab(msg){\n"
+                "        const [tab]=await chrome.tabs.query({active:true,currentWindow:true});\n"
+                "        return new Promise(res=>chrome.tabs.sendMessage(tab.id,msg,res));\n"
+                "    }\n\n"
+            )
 
-"""
-        
-        # Email extraction logic
-        if extract_emails:
-            js += """    // Email extraction button
-    const extractBtn = document.getElementById('extract-btn');
-    if (extractBtn) {
-        extractBtn.addEventListener('click', async function() {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
-            chrome.tabs.sendMessage(tab.id, { action: 'getEmails' }, function(response) {
-                const emailList = document.getElementById('email-list');
-                const emailCount = document.getElementById('email-count');
-                
-                if (response && response.emails && response.emails.length > 0) {
-                    // Display emails as a list
-                    let html = '<ul style="text-align: left; margin-top: 10px;">';
-                    response.emails.forEach(function(email) {
-                        html += '<li style="padding: 5px; word-break: break-all;">' + email + '</li>';
-                    });
-                    html += '</ul>';
-                    emailList.innerHTML = html;
-                    emailCount.textContent = 'Found ' + response.emails.length + ' email(s)';
-                } else {
-                    emailList.innerHTML = '<p style="margin-top: 10px;">No emails found on this page.</p>';
-                    emailCount.textContent = '';
-                }
-            });
-        });
-    }
+            if extract_emails:
+                js += (
+                    "    const extractBtn=document.getElementById('extract-btn');\n"
+                    "    if(extractBtn){\n"
+                    "        extractBtn.addEventListener('click',async()=>{\n"
+                    "            const resp=await postToActiveTab({action:'getEmails'});\n"
+                    "            const list=document.getElementById('email-list');\n"
+                    "            const count=document.getElementById('email-count');\n"
+                    "            if(resp&&resp.emails&&resp.emails.length){\n"
+                    "                list.innerHTML='<ul style=\"text-align:left;margin-top:10px;\">'+resp.emails.map(e=>`<li style=\"padding:5px;word-break:break-all;\">${e}</li>`).join('')+'</ul>';\n"
+                    "                count.textContent='Found '+resp.emails.length+' email(s)';\n"
+                    "            }else{ list.innerHTML='<p style=\"margin-top:10px;\">No emails found on this page.</p>'; count.textContent=''; }\n"
+                    "        });\n"
+                    "    }\n\n"
+                )
 
-"""
-        
-        # Button interaction with content script
-        if has_button and needs_content_interaction and not extract_emails:
-            js += """    // Action button to interact with content script
-    const actionBtn = document.getElementById('action-btn');
-    if (actionBtn) {
-        actionBtn.addEventListener('click', async function() {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
-            chrome.tabs.sendMessage(tab.id, { action: 'execute' }, function(response) {
-                const status = document.getElementById('status');
-                if (status) {
-                    status.textContent = response ? response.message : 'Action executed!';
-                }
-            });
-        });
-    }
+            # generic action button
+            js += (
+                "    const actionBtn=document.getElementById('action-btn');\n"
+                "    if(actionBtn){\n"
+                "        actionBtn.addEventListener('click',async()=>{\n"
+                "            const resp=await postToActiveTab({action:'execute'});\n"
+                "            const status=document.getElementById('status'); if(status) status.textContent=(resp&&resp.message)||'Action executed';\n"
+                "        });\n"
+                "    }\n\n"
+            )
 
-"""
-        elif has_button and not needs_content_interaction:
-            js += """    // Generic button click handler
-    const actionBtn = document.getElementById('action-btn');
-    if (actionBtn) {
-        actionBtn.addEventListener('click', function() {
-            const status = document.getElementById('status');
-            if (status) {
-                status.textContent = 'Button clicked!';
-            }
-            console.log('Action button clicked');
-        });
-    }
-
-"""
-        
-        js += """});
-"""
-        
+        js += "});\n"
         return js
     
     def generate_content_js(self):
         """Generate content.js based on user prompt"""
-        
-        highlight_text = 'highlight' in self.prompt_lower
-        phone_numbers = 'phone' in self.prompt_lower
-        email = 'email' in self.prompt_lower
-        change_color = 'color' in self.prompt_lower or 'blue' in self.prompt_lower
-        extract = 'extract' in self.prompt_lower
-        
+        # Compact content script: single listener handles actions
         js = """// Content script - runs on web pages
 
 console.log('Content script loaded');
 
-"""
-        
-        # Highlight phone numbers
-        if highlight_text and phone_numbers:
-            js += """// Highlight all phone numbers on the page
-function highlightPhoneNumbers() {
-    const phoneRegex = /\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b/g;
-    const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-    );
-    
-    const textNodes = [];
-    while (walker.nextNode()) {
-        if (walker.currentNode.parentNode.nodeName !== 'SCRIPT' && 
-            walker.currentNode.parentNode.nodeName !== 'STYLE') {
-            textNodes.push(walker.currentNode);
-        }
-    }
-    
-    textNodes.forEach(function(node) {
-        const text = node.textContent;
-        if (phoneRegex.test(text)) {
-            const span = document.createElement('span');
-            span.innerHTML = text.replace(phoneRegex, '<mark style="background-color: yellow; padding: 2px;">$&</mark>');
-            node.parentNode.replaceChild(span, node);
-        }
-    });
+function extractEmails(){
+    const re=/\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/g;
+    return (document.body.innerText.match(re)||[]);
 }
 
-highlightPhoneNumbers();
-
-"""
-        
-        # Extract email addresses
-        if extract and email:
-            js += """// Extract all email addresses and send to popup
-function extractEmails() {
-    const emailRegex = /\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b/g;
-    const bodyText = document.body.innerText;
-    const emails = bodyText.match(emailRegex) || [];
-    console.log('Found emails:', emails);
-    return emails;
-}
-
-// Listen for requests from popup
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'getEmails') {
-        const emails = extractEmails();
-        sendResponse({ emails: emails });
+chrome.runtime.onMessage.addListener(function(request,sender,sendResponse){
+    if(request.action==='getEmails'){
+        sendResponse({emails: extractEmails()});
+    }else if(request.action==='execute'){
+        // default execute behavior: change text color to blue
+        document.querySelectorAll('body, body *').forEach(el=>{ try{ el.style.color='blue'; }catch(e){} });
+        sendResponse({message:'Text color changed to blue!'});
     }
     return true;
 });
 
-// Auto-extract on page load
-const foundEmails = extractEmails();
-console.log('Extracted', foundEmails.length, 'emails from page');
+// Auto-extract on load for debugging
+console.log('Auto-extracted', extractEmails().length, 'emails from page');
 
 """
-        
-        # Change text color
-        if change_color:
-            js += """// Listen for messages from popup
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'execute') {
-        // Change all text to blue
-        document.querySelectorAll('*').forEach(function(element) {
-            element.style.color = 'blue';
-        });
-        sendResponse({ message: 'Text color changed to blue!' });
-    }
-    return true;
-});
-
-"""
-        
-        # Generic content modification
-        if not (highlight_text or extract or change_color):
-            js += """// Generic content script functionality
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'execute') {
-        console.log('Content script received message:', request);
-        // Add your custom logic here
-        sendResponse({ message: 'Content script executed successfully!' });
-    }
-    return true;
-});
-
-"""
-        
         return js
     
     def generate_background_js(self):
@@ -586,6 +392,27 @@ p {
         
         generated_files = []
         
+        # If configured to use Gemini / LLM, try to ask it for the files directly
+        if self.use_gemini and gemini_generate_files:
+            try:
+                files_map = gemini_generate_files(self.requirements, self.user_prompt)
+                if not isinstance(files_map, dict):
+                    raise RuntimeError('Gemini client returned an unexpected shape')
+
+                for fname, content in files_map.items():
+                    # Only write files we know we want (guards and whitelist)
+                    if fname not in ('popup.html', 'popup.js', 'content.js', 'styles.css'):
+                        continue
+                    with open(os.path.join(output_dir, fname), 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    generated_files.append(fname)
+
+                # When using Gemini we skip local generation of the same files
+                return generated_files
+            except Exception as exc:
+                # Don't crash the whole flow — fall back to default generator
+                print('⚠️ Gemini generation failed, falling back to heuristic generator: ', exc)
+
         # Generate popup files
         if self.requirements.get('needs_popup', False):
             popup_html = self.generate_popup_html()

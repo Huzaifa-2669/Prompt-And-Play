@@ -6,6 +6,13 @@ Use these prompts to test chrome_forge.py
 Simply run: python chrome_forge.py
 Then enter any of these prompts when asked.
 
+Optional: Gemini AI
+-------------------
+Gemini is used automatically for popup/content/style generation when `GEMINI_API_KEY`
+is set. If you don't want Gemini, unset the environment variable or remove
+`requirements['use_gemini']` in `chrome_forge.py`.
+
+
 ================================================================================
 TEST CASE 1: Simple Popup Extension
 ================================================================================

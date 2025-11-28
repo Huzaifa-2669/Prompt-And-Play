@@ -2,28 +2,8 @@
   "manifest_version": 3,
   "name": "Generated Extension",
   "version": "1.0",
-  "description": "Extract all email addresses from the current page and display them in a list.",
+  "description": "Create an extension that shows a popup with today?s date.",
   "action": {
     "default_popup": "popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "styles.css"
-      ]
-    }
-  ],
-  "permissions": [
-    "scripting",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ]
+  }
 }

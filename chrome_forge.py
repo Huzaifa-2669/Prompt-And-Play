@@ -192,6 +192,11 @@ def main():
     print("Generating Manifest V3...".center(60))
     print("=" * 60 + "\n")
     
+    # Enable Gemini by default for styles, popup and content generation.
+    # If `GEMINI_API_KEY` is not present or the client call fails, the
+    # generator will gracefully fall back to the local heuristic generator.
+    requirements['use_gemini'] = True
+
     # Convert requirements to manifest format
     manifest_analysis = convert_to_manifest_format(requirements, user_prompt)
     

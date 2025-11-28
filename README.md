@@ -174,6 +174,42 @@ Create a pomodoro timer that shows a notification every 25 minutes.
 
 ---
 
+## 🤖 AI-driven generation (Gemini)
+
+ChromeForge can optionally use a Gemini-style LLM to synthesize file contents for
+`popup.html`, `popup.js`, `content.js`, and `styles.css` instead of using the
+built-in heuristics. This makes the generation more flexible and lets the
+model produce richer UIs and behaviors based on your prompt.
+
+How to enable:
+
+1. Set your Gemini API key in the environment variable `GEMINI_API_KEY`.
+    - Windows (PowerShell):
+       ```powershell
+       setx GEMINI_API_KEY "your_api_key_here"; $env:GEMINI_API_KEY = 'your_api_key_here'
+       ```
+    - macOS/Linux (bash):
+       ```bash
+       export GEMINI_API_KEY=your_api_key_here
+       ```
+
+2. Run the tool as usual:
+    ```bash
+    python chrome_forge.py
+    ```
+
+3. Gemini is now used automatically for popup/content/style generation. If
+   you don't want to use Gemini, remove the `GEMINI_API_KEY` environment
+   variable or edit `chrome_forge.py` to disable `requirements['use_gemini']`.
+
+Notes:
+- The Gemini client expects the LLM to return a JSON map where keys are
+   filenames and values are string contents. If the API call fails, the tool
+   gracefully falls back to the legacy heuristic generator.
+- Add the optional `GEMINI_API_URL` or `GEMINI_MODEL` environment variables
+   to target a different endpoint or model.
+
+
 ## 🔧 Assumptions
 
 ### Language Processing

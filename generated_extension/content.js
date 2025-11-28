@@ -2,25 +2,22 @@
 
 console.log('Content script loaded');
 
-// Extract all email addresses and send to popup
-function extractEmails() {
-    const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-    const bodyText = document.body.innerText;
-    const emails = bodyText.match(emailRegex) || [];
-    console.log('Found emails:', emails);
-    return emails;
+function extractEmails(){
+    const re=/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+    return (document.body.innerText.match(re)||[]);
 }
 
-// Listen for requests from popup
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'getEmails') {
-        const emails = extractEmails();
-        sendResponse({ emails: emails });
+chrome.runtime.onMessage.addListener(function(request,sender,sendResponse){
+    if(request.action==='getEmails'){
+        sendResponse({emails: extractEmails()});
+    }else if(request.action==='execute'){
+        // default execute behavior: change text color to blue
+        document.querySelectorAll('body, body *').forEach(el=>{ try{ el.style.color='blue'; }catch(e){} });
+        sendResponse({message:'Text color changed to blue!'});
     }
     return true;
 });
 
-// Auto-extract on page load
-const foundEmails = extractEmails();
-console.log('Extracted', foundEmails.length, 'emails from page');
+// Auto-extract on load for debugging
+console.log('Auto-extracted', extractEmails().length, 'emails from page');
 
